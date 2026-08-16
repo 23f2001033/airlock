@@ -1,0 +1,22 @@
+# Secrets -- never commit these. The repo is public.
+.env
+operator.json
+selftest_operator.json
+
+# Runtime artefacts
+audit.jsonl
+selftest_audit.jsonl
+*.log
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
