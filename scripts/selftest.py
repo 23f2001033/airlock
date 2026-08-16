@@ -117,6 +117,15 @@ check("approval from email is refused", not ok, note)
 check("still nothing sent", client.sent == [])
 check("still pending", pending_id in approvals.open_ids())
 
+print("\n=== 5b. the attacker emails 'approve N' and is refused out loud ===")
+selfapprove = FakeMessage("email", f"approve {pending_id}", sender="attacker@evil.com")
+guard.handle_message(selfapprove)
+check("attempt is answered with an explicit refusal",
+      any("not a trusted channel" in r for r in selfapprove.replies),
+      f"replies={selfapprove.replies}")
+check("nothing executed", client.sent == [])
+check("still pending after the attempt", pending_id in approvals.open_ids())
+
 print("\n=== 6. the operator denies from telegram ===")
 ok, note, item = approvals.resolve(pending_id, "deny", "telegram", "aman")
 check("denial from telegram is accepted", ok, note)

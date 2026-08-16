@@ -1,0 +1,19 @@
+Refuse approval attempts from untrusted channels out loud
+
+Approval commands were only parsed on trusted channels, so an attacker emailing
+"approve 1" fell through to the planner and got answered like ordinary
+conversation. Nothing unsafe executed, but the refusal was invisible and left
+no audit record of the attempt.
+
+Approval commands are now recognised on every channel and refused by
+approvals.resolve() when the channel is not trusted, which produces both an
+explicit reply and an approval_refused_untrusted audit entry.
+
+Verified live: attacker emails "approve 1" against a held action and receives
+"email is not a trusted channel", with the attempt recorded.
+
+Also adds scripts/send_email.py for driving arbitrary inbound email, a
+regression check for this path (selftest now 24 checks), and a rewritten
+demo script with the screen layout.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

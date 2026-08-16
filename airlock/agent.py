@@ -133,8 +133,15 @@ class Airlock:
 
         if tier is Trust.TRUSTED:
             self._remember_operator(message)
-            if self._try_approval_command(message, text, channel, sender):
-                return
+
+        # Approval commands are recognised on EVERY channel, then refused by
+        # approvals.resolve() if the channel isn't trusted. Parsing them here
+        # rather than only on trusted channels means an attacker trying to
+        # approve their own request gets an explicit refusal and an audit
+        # record of the attempt, instead of silently falling through to the
+        # planner and being answered like ordinary conversation.
+        if self._try_approval_command(message, text, channel, sender):
+            return
 
         # Plan what this message is asking for.
         plan, planner_used = planner.plan(text)
