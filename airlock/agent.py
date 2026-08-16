@@ -226,8 +226,14 @@ class Airlock:
     # -------------------------------------------------------------- approvals
 
     def _try_approval_command(self, message, text, channel, sender) -> bool:
-        approve = APPROVE_RE.match(text or "")
-        deny = DENY_RE.match(text or "")
+        # Email replies (Gmail, Outlook, ...) append the full quoted thread
+        # below the new text by default. Only the FIRST line is the user's
+        # actual reply, so match against that instead of the whole body --
+        # otherwise "approve 1" followed by a quoted original message never
+        # matches and silently falls through to the planner.
+        first_line = (text or "").strip().splitlines()[0] if (text or "").strip() else ""
+        approve = APPROVE_RE.match(first_line)
+        deny = DENY_RE.match(first_line)
         if not approve and not deny:
             return False
         decision = "approve" if approve else "deny"
