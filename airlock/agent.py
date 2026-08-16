@@ -34,6 +34,19 @@ from .trust import Trust, describe, is_trusted, trust_of
 
 OPERATOR_FILE = os.environ.get("AIRLOCK_OPERATOR_FILE", "operator.json")
 
+
+class _OperatorNotifier:
+    """Stands in for a Message when Airlock is acting on the operator's own
+    authority (a button tap), where there is no inbound message to reply to."""
+
+    def __init__(self, airlock: "Airlock") -> None:
+        self._airlock = airlock
+        self.channel = "telegram"
+
+    def reply(self, text: str | None = None, **_: object) -> dict:
+        self._airlock._notify_operator(text or "")
+        return {"ok": True}
+
 APPROVE_RE = re.compile(r"^\s*/?(approve|yes|ok|allow)\s*#?(\d+)\s*$", re.I)
 DENY_RE = re.compile(r"^\s*/?(deny|no|reject|block)\s*#?(\d+)\s*$", re.I)
 BUTTON_RE = re.compile(r"^(approve|deny):(\d+)$", re.I)
@@ -216,7 +229,13 @@ class Airlock:
         return True
 
     def handle_interaction(self, interaction) -> None:
-        """Button taps from Telegram/Slack/Discord."""
+        """Button taps from Telegram/Slack/Discord.
+
+        Note we do NOT call ``interaction.reply()`` here. The approval card is an
+        outbound message we sent, and Caspian only lets you reply to inbound
+        ones, so replying to our own card fails with a 400. We send a fresh
+        message into the operator's conversation instead.
+        """
         match = BUTTON_RE.match((interaction.value or "").strip())
         if not match:
             return
@@ -225,9 +244,10 @@ class Airlock:
         sender = (interaction.sender or {}).get("address") or (interaction.sender or {}).get("id") or "operator"
 
         ok, note, item = approvals.resolve(approval_id, decision, channel, sender)
-        interaction.reply(note)
+        self._notify_operator(note)
+        print(f"[airlock] button {decision} #{approval_id}: {note}")
         if ok and item and item.state == "approved":
-            self._run_approved(item, note_to=interaction)
+            self._run_approved(item, note_to=_OperatorNotifier(self))
 
     def _resolve(self, message, decision, approval_id, channel, sender) -> None:
         ok, note, item = approvals.resolve(approval_id, decision, channel, sender)
